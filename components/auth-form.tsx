@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { createClient } from "@/lib/supabase";
 
 /** Hình mắt; `off` thêm gạch chéo khi mật khẩu đang hiện (bấm để ẩn). */
@@ -25,6 +25,8 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
+const noSubscribe = () => () => {};
+
 export type Portal = "admin" | "parent";
 
 /**
@@ -34,13 +36,18 @@ export type Portal = "admin" | "parent";
 export function AuthForm({ portal, next, notice }: { portal: Portal; next: string; notice?: string }) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const [navigating, startNavigation] = useTransition();
+  const busy = signingIn || navigating;
+  // Chưa có JavaScript thì trình duyệt tự gửi form: khoá nút tới khi trang sẵn sàng.
+  const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
   const [error, setError] = useState<string | null>(notice ?? null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    setBusy(true);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    setSigningIn(true);
     setError(null);
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -48,7 +55,7 @@ export function AuthForm({ portal, next, notice }: { portal: Portal; next: strin
       password: String(form.get("password") ?? ""),
     });
     if (error) {
-      setBusy(false);
+      setSigningIn(false);
       setError(
         /invalid login/i.test(error.message)
           ? "Email hoặc mật khẩu chưa đúng."
@@ -61,7 +68,7 @@ export function AuthForm({ portal, next, notice }: { portal: Portal; next: strin
     const isAdmin = data.user?.app_metadata?.role === "admin";
     if (isAdmin !== (portal === "admin")) {
       await supabase.auth.signOut();
-      setBusy(false);
+      setSigningIn(false);
       setError(
         isAdmin
           ? "Đây là tài khoản Trung Tâm THEDU. Bạn đăng nhập ở trang của trung tâm nhé."
@@ -69,8 +76,15 @@ export function AuthForm({ portal, next, notice }: { portal: Portal; next: strin
       );
       return;
     }
-    router.replace(next);
-    router.refresh();
+    // Next.js giữ trạng thái component khi điều hướng: phải dọn form, nếu không lúc đăng
+    // xuất quay lại, nút vẫn bị khoá và mật khẩu cũ vẫn nằm trong ô nhập.
+    formEl.reset();
+    setShowPassword(false);
+    setSigningIn(false);
+    startNavigation(() => {
+      router.replace(next);
+      router.refresh();
+    });
   }
 
   const input =
@@ -78,7 +92,8 @@ export function AuthForm({ portal, next, notice }: { portal: Portal; next: strin
 
   return (
     <div className="space-y-5">
-      <form onSubmit={onSubmit} className="space-y-3">
+      {/* method="post": kể cả khi gửi trước lúc JS chạy, mật khẩu không bao giờ lên URL. */}
+      <form method="post" onSubmit={onSubmit} className="space-y-3">
         <input
           name="email"
           type="email"
@@ -119,7 +134,7 @@ export function AuthForm({ portal, next, notice }: { portal: Portal; next: strin
 
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || !hydrated}
           className="min-h-14 w-full rounded-full bg-brand-600 text-lg font-extrabold text-white shadow-lg shadow-brand-600/25 active:scale-[0.98] disabled:opacity-60"
         >
           {busy ? "Đang đăng nhập…" : "Đăng nhập"}

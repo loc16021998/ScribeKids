@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   adminCreateStudent,
   adminUpdateStudent,
@@ -33,6 +33,23 @@ function Feedback({ state }: { state: ActionState }) {
       </p>
     );
   return null;
+}
+
+/**
+ * Next.js giữ trạng thái component khi điều hướng, nên mật khẩu "chỉ hiện một lần" sẽ còn
+ * nguyên khi quay lại trang. Hook này ẩn kết quả ngay khi rời trang (effect được dọn).
+ */
+function useVisibleUntilLeave<T>(state: T): T | undefined {
+  const [left, setLeft] = useState<T | undefined>(undefined);
+  const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    // Effect chạy lại ngay (StrictMode, đổi state) nghĩa là chưa rời trang: huỷ việc ẩn.
+    clearTimeout(pending.current);
+    return () => {
+      pending.current = setTimeout(() => setLeft(state), 0);
+    };
+  }, [state]);
+  return state === left ? undefined : state;
 }
 
 /** Thông tin đăng nhập chỉ hiện một lần — hệ thống không lưu mật khẩu ở dạng đọc được. */
@@ -68,7 +85,8 @@ function CredentialCard({ credentials }: { credentials: NonNullable<NonNullable<
 }
 
 export function CreateParentForm() {
-  const [state, action, pending] = useActionState(createParent, undefined);
+  const [actionState, action, pending] = useActionState(createParent, undefined);
+  const state = useVisibleUntilLeave(actionState);
   if (state?.credentials) {
     return (
       <div className="space-y-3">
@@ -123,7 +141,8 @@ export function ParentNameForm({ parentId, fullName }: { parentId: string; fullN
 }
 
 export function ResetPasswordForm({ parentId }: { parentId: string }) {
-  const [state, action, pending] = useActionState(resetParentPassword, undefined);
+  const [actionState, action, pending] = useActionState(resetParentPassword, undefined);
+  const state = useVisibleUntilLeave(actionState);
   return (
     <div className="space-y-3">
       {state?.credentials && <CredentialCard credentials={state.credentials} />}

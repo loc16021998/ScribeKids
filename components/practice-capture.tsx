@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { StudentAvatar } from "@/components/student-avatar";
 import { requestGrading } from "@/lib/ai/client";
 import type { ProcessedCapture } from "@/lib/image/capture";
@@ -47,6 +47,7 @@ export function PracticeCapture({
   );
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
+  const [navigating, startNavigation] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const student = students.find((s) => s.id === studentId) ?? null;
   const outOfQuota = student?.left === 0;
@@ -66,7 +67,13 @@ export function PracticeCapture({
           // Chấm lỗi vẫn sang trang bài nộp — ở đó có nút "Chấm bài ngay" để thử lại.
         }
       }
-      router.push(`${resultBase}/${submission.id}`);
+      // Next.js giữ trạng thái khi điều hướng: phải trả về "idle", nếu không lúc quay lại
+      // trang này màn hình chờ vẫn che kín. Transition giữ màn hình chờ tới khi chuyển xong.
+      setPhase("idle");
+      startNavigation(() => {
+        router.push(`${resultBase}/${submission.id}`);
+        router.refresh();
+      });
     } catch (e) {
       setPhase("idle");
       setError(e instanceof Error ? e.message : "Nộp bài thất bại, bạn thử lại nhé.");
@@ -125,7 +132,9 @@ export function PracticeCapture({
       </ul>
 
       {open && <CameraCapture onClose={() => setOpen(false)} onConfirm={handleConfirm} />}
-      {phase !== "idle" && <GradingScreen phase={phase} name={student?.name ?? ""} />}
+      {(phase !== "idle" || navigating) && (
+        <GradingScreen phase={phase === "idle" ? "uploading" : phase} name={student?.name ?? ""} />
+      )}
     </div>
   );
 }
