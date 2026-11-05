@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { StudentAvatar } from "@/components/student-avatar";
 import { requestGrading } from "@/lib/ai/client";
 import type { ProcessedCapture } from "@/lib/image/capture";
+import { playSound } from "@/lib/gamification/sounds";
 import { uploadSubmission } from "@/lib/image/upload";
 
 // Chỉ tải code camera + xử lý ảnh khi phụ huynh thực sự mở camera.
@@ -59,6 +60,7 @@ export function PracticeCapture({
     setPhase("uploading");
     try {
       const submission = await uploadSubmission(studentId, capture);
+      playSound("success");
       if (gradeAfterUpload) {
         setPhase("grading");
         try {

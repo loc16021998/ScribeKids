@@ -60,17 +60,15 @@ export function relativeDay(iso: string, now = new Date()) {
   return formatDate(iso, { year: "numeric" });
 }
 
-/** Số ngày luyện liên tiếp tính đến hôm nay (hoặc hôm qua). */
-export function practiceStreak(isoDates: string[], now = new Date()) {
-  const days = new Set(isoDates.map((d) => dayKey(d)));
-  const cursor = new Date(`${dayKey(now)}T00:00:00Z`);
-  if (!days.has(cursor.toISOString().slice(0, 10))) cursor.setUTCDate(cursor.getUTCDate() - 1);
-  let streak = 0;
-  while (days.has(cursor.toISOString().slice(0, 10))) {
-    streak++;
-    cursor.setUTCDate(cursor.getUTCDate() - 1);
-  }
-  return streak;
+/**
+ * Chuỗi đang còn hiệu lực từ bảng streaks: chuỗi lưu trong database tính tới ngày nộp
+ * cuối, nên nếu ngày đó cũ hơn hôm qua (giờ Việt Nam) thì chuỗi đã đứt.
+ */
+export function activeStreak(row: { current_streak: number; last_practice_date: string | null } | null | undefined, now = new Date()) {
+  if (!row?.last_practice_date) return 0;
+  const yesterday = new Date(`${dayKey(now)}T00:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  return row.last_practice_date >= yesterday.toISOString().slice(0, 10) ? row.current_streak : 0;
 }
 
 export const CRITERIA_LABELS = {

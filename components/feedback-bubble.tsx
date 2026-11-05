@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Mascot } from "@/components/gamification/Mascot";
+import type { MascotMood } from "@/lib/gamification/badges";
 
 /**
  * Lời nhận xét trong bong bóng thoại của "Cô Cú". Có nút đọc to (Web Speech API,
  * giọng tiếng Việt nếu máy có) — bé 5–6 tuổi chưa đọc thạo vẫn nghe được lời khen.
  */
-export function FeedbackBubble({ text }: { text: string }) {
+export function FeedbackBubble({ text, mood = "happy" }: { text: string; mood?: MascotMood }) {
   const [canSpeak, setCanSpeak] = useState(false);
   const [speaking, setSpeaking] = useState(false);
 
@@ -40,9 +42,7 @@ export function FeedbackBubble({ text }: { text: string }) {
 
   return (
     <div className="flex items-end gap-3">
-      <span aria-hidden className="animate-float pb-1 text-5xl">
-        🦉
-      </span>
+      <Mascot mood={mood} size={64} />
       <div className="relative flex-1 rounded-3xl rounded-bl-md bg-white p-4 shadow-sm ring-2 ring-brand-100">
         <p className="text-lg leading-relaxed font-semibold text-ink">{text}</p>
         {canSpeak && (

@@ -81,6 +81,29 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      streaks: {
+        Row: {
+          student_id: string;
+          current_streak: number;
+          longest_streak: number;
+          last_practice_date: string | null;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      student_badges: {
+        Row: {
+          student_id: string;
+          badge_id: string;
+          earned_at: string;
+          submission_id: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       submissions: {
         Row: {
           id: string;

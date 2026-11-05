@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { BottomNav, NavBar } from "@/components/bottom-nav";
+import { TapSounds } from "@/components/gamification/sound-effects";
 
 /** Vỏ ứng dụng mobile-first: thanh tiêu đề trên + nội dung + tab bar dưới. */
 export default function MainLayout({ children }: LayoutProps<"/">) {
@@ -25,6 +26,7 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
 
+      <TapSounds />
       <Suspense fallback={<NavBar pathname={null} />}>
         <BottomNav />
       </Suspense>

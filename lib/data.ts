@@ -2,7 +2,7 @@ import "server-only";
 import type { CriterionKey } from "./ai/standards";
 import type { GradingResult } from "./ai/types";
 import type { Profile, Student } from "./database.types";
-import { average, dayKey, practiceStreak } from "./score";
+import { activeStreak, average, dayKey } from "./score";
 import { STORAGE_BUCKETS, isSupabaseConfigured } from "./supabase";
 import { createClient } from "./supabase-server";
 
@@ -51,6 +51,14 @@ export async function listStudentsWithStats(): Promise<StudentWithStats[]> {
     .order("created_at", { ascending: true })
     .limit(2000);
 
+  const { data: streakRows } = await supabase
+    .from("streaks")
+    .select("*")
+    .in(
+      "student_id",
+      students.map((s) => s.id),
+    );
+
   return students.map((s) => {
     const mine = (subs ?? []).filter((x) => x.student_id === s.id);
     const points = mine
@@ -63,7 +71,7 @@ export async function listStudentsWithStats(): Promise<StudentWithStats[]> {
       latestScore: points.length ? points[points.length - 1].score : null,
       latestAt: latest?.created_at ?? null,
       trend: trendOf(points.map((p) => p.score)),
-      streak: practiceStreak(mine.map((x) => x.created_at)),
+      streak: activeStreak(streakRows?.find((r) => r.student_id === s.id)),
       points,
     };
   });
@@ -94,6 +102,8 @@ export type StudentDashboard = {
   history: HistoryItem[]; // mới → cũ
   /** TB từng tiêu chí: 3 bài đầu tiên so với 3 bài gần nhất. */
   criteria: { key: CriterionKey; first: number | null; recent: number | null }[];
+  earnedBadges: string[];
+  longestStreak: number;
   /** Mốc "bây giờ" (ms) lúc tải dữ liệu — để lọc 7/30 ngày mà không gọi Date.now() khi render. */
   now: number;
 };
@@ -112,6 +122,11 @@ export async function getStudentDashboard(studentId: string): Promise<StudentDas
     .eq("student_id", studentId)
     .order("created_at", { ascending: false })
     .limit(400);
+
+  const [{ data: streakRow }, { data: badgeRows }] = await Promise.all([
+    supabase.from("streaks").select("*").eq("student_id", studentId).maybeSingle(),
+    supabase.from("student_badges").select("badge_id").eq("student_id", studentId),
+  ]);
 
   const rows = (subs ?? []) as unknown as {
     id: string;
@@ -146,7 +161,7 @@ export async function getStudentDashboard(studentId: string): Promise<StudentDas
       latestScore: points.length ? points[points.length - 1].score : null,
       latestAt: rows[0]?.created_at ?? null,
       trend: trendOf(points.map((p) => p.score)),
-      streak: practiceStreak(rows.map((r) => r.created_at)),
+      streak: activeStreak(streakRow),
       points,
     },
     history: recentRows.map((r, i) => ({
@@ -157,6 +172,8 @@ export async function getStudentDashboard(studentId: string): Promise<StudentDas
       feedback: r.feedback,
     })),
     criteria,
+    earnedBadges: (badgeRows ?? []).map((b) => b.badge_id),
+    longestStreak: streakRow?.longest_streak ?? 0,
     now: Date.now(),
   };
 }
@@ -169,6 +186,9 @@ export type SubmissionDetail = {
   imageUrl: string | null;
   originalUrl: string | null;
   student: Student;
+  /** Huy hiệu mà chính bài này mang lại. */
+  rewardBadges: string[];
+  streak: number;
   /** Bài trước & sau của cùng bé, để lướt qua lại. */
   prevId: string | null;
   nextId: string | null;
@@ -179,7 +199,7 @@ export async function getSubmissionDetail(id: string): Promise<SubmissionDetail 
   const { data: sub } = await supabase.from("submissions").select("*").eq("id", id).maybeSingle();
   if (!sub) return null;
 
-  const [{ data: student }, { data: prev }, { data: next }, urls] = await Promise.all([
+  const [{ data: student }, { data: prev }, { data: next }, urls, { data: badgeRows }, { data: streakRow }] = await Promise.all([
     supabase.from("students").select("*").eq("id", sub.student_id).single(),
     supabase
       .from("submissions")
@@ -198,6 +218,8 @@ export async function getSubmissionDetail(id: string): Promise<SubmissionDetail 
       .limit(1)
       .maybeSingle(),
     signPaths([sub.image_url, sub.image_url.replace(/\.jpg$/i, "-original.jpg")]),
+    supabase.from("student_badges").select("badge_id").eq("submission_id", sub.id),
+    supabase.from("streaks").select("*").eq("student_id", sub.student_id).maybeSingle(),
   ]);
   if (!student) return null;
 
@@ -209,6 +231,8 @@ export async function getSubmissionDetail(id: string): Promise<SubmissionDetail 
     imageUrl: urls[0],
     originalUrl: urls[1],
     student,
+    rewardBadges: (badgeRows ?? []).map((b) => b.badge_id),
+    streak: activeStreak(streakRow),
     prevId: prev?.id ?? null,
     nextId: next?.id ?? null,
   };

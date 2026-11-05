@@ -30,7 +30,7 @@ export function Confetti({ pieces = 40 }: { pieces?: number }) {
 
   if (!items.length) return null;
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
       {items.map((p, i) => (
         <span
           key={i}

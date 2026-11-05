@@ -81,6 +81,13 @@ Mỗi bên có trang đăng nhập riêng, có nút chuyển qua lại: `/dang-n
 
 **Phân quyền:** vai trò nằm ở `profiles.role`; tài khoản mới luôn là `parent`, chỉ service role đổi được. Ba lớp bảo vệ: RLS (`is_admin()`), `requireAdmin()` đầu mọi trang và Server Action của admin ([lib/admin.ts](lib/admin.ts)), và điều hướng ở proxy (đọc `app_metadata.role` trong JWT, chỉ để điều hướng).
 
+## Phần thưởng cho bé
+
+- **Chuỗi ngày và huy hiệu** do trigger trong database ghi (bảng `streaks`, `student_badges`), người dùng chỉ đọc. Luật mở khoá ở migration `20261106000000_gamification.sql`; tên và biểu tượng ở `lib/gamification/badges.ts` (id phải khớp).
+- **Sao thay cho điểm:** phụ huynh và bé thấy số Ngôi Sao Vàng cùng cô Cú biểu cảm theo số sao (`components/gamification/`); điểm số nằm trong phần thu gọn dành cho phụ huynh.
+- **`RewardModal`:** tự hiện một lần cho mỗi bài đã chấm (nhớ theo từng thiết bị), mở bằng một lần chạm để âm thanh chạy được.
+- **Âm thanh** tổng hợp bằng Web Audio API (`lib/gamification/sounds.ts`), có công tắc tắt ở trang Tài khoản.
+
 ## Chấm điểm nét chữ (AI/CV)
 
 `POST /api/grade` với `{ "submission_id": "<uuid>" }` (hoặc `{ "image_url": "<signed URL Supabase>" }` để chấm thử, không lưu).

@@ -1,14 +1,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Confetti } from "@/components/confetti";
 import { CriteriaBars } from "@/components/criteria-bars";
 import { FeedbackBubble } from "@/components/feedback-bubble";
+import RewardModal from "@/components/gamification/RewardModal";
+import { StarReward } from "@/components/gamification/star-reward";
 import { GradeNowButton } from "@/components/grade-now-button";
 import { ScoreBadge } from "@/components/score-badge";
 import SubmissionCanvas from "@/components/SubmissionCanvas";
 import { Card, SectionTitle, Skeleton } from "@/components/ui";
 import type { CriterionKey } from "@/lib/ai/standards";
 import type { SubmissionDetail } from "@/lib/data";
+import { moodForStars, starsForScore } from "@/lib/gamification/badges";
 import { formatDate } from "@/lib/score";
 
 const ORDER: CriterionKey[] = ["size", "alignment", "slant", "spacing", "letter_form"];
@@ -46,9 +48,15 @@ export function SubmissionDetailView({
 
       {result && sub.score != null ? (
         <>
-          {sub.score >= 80 && <Confetti />}
-          <ScoreBadge score={sub.score} />
-          <FeedbackBubble text={result.encouraging_feedback} />
+          {adminPanel ? <ScoreBadge score={sub.score} /> : <StarReward score={sub.score} />}
+          <RewardModal
+            submissionId={sub.id}
+            score={sub.score}
+            badgeIds={sub.rewardBadges}
+            streak={sub.streak}
+            autoOpen={!adminPanel}
+          />
+          <FeedbackBubble text={result.encouraging_feedback} mood={moodForStars(starsForScore(sub.score))} />
 
           {sub.imageUrl && (
             <SubmissionCanvas
@@ -81,6 +89,7 @@ export function SubmissionDetailView({
               </span>
             </summary>
             <div className="space-y-5 px-4 pb-5">
+              <p className="font-extrabold">Điểm của bài: {sub.score}/100</p>
               <CriteriaBars
                 rows={ORDER.map((key) => ({
                   key,

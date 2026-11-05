@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CriteriaBars } from "@/components/criteria-bars";
+import { BadgeShelf, StreakCard } from "@/components/gamification/badge-shelf";
 import ProgressChart from "@/components/ProgressChart";
 import { ScoreBadge } from "@/components/score-badge";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -38,6 +39,8 @@ export function StudentDashboardView({
         {captureLabel} {student.name}
       </PrimaryLink>
 
+      <StreakCard current={student.streak} longest={data.longestStreak} />
+
       <div className="grid grid-cols-2 gap-3">
         <StatTile label="Bài đã nộp" value={student.submissionCount} />
         <StatTile
@@ -45,7 +48,7 @@ export function StudentDashboardView({
           value={student.latestScore ?? "—"}
           hint={student.latestAt ? relativeDay(student.latestAt) : undefined}
         />
-        <StatTile label="Chuỗi ngày luyện" value={student.streak ? `🔥 ${student.streak}` : "0"} hint="ngày liên tiếp" />
+        <StatTile label="Huy hiệu" value={`🏅 ${data.earnedBadges.length}`} />
         <StatTile
           label="So với trước"
           value={
@@ -62,6 +65,8 @@ export function StudentDashboardView({
           hint="3 bài gần nhất"
         />
       </div>
+
+      <BadgeShelf earned={data.earnedBadges} />
 
       {history.length === 0 ? (
         <EmptyState icon="📒" title="Chưa có bài nào">

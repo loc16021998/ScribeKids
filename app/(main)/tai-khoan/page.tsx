@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { signOut } from "@/app/(main)/actions";
+import { SoundToggle } from "@/components/gamification/sound-effects";
 import { PageHeader } from "@/components/page-header";
 import { Card, SetupNotice, Skeleton } from "@/components/ui";
 import { getViewer } from "@/lib/data";
@@ -39,6 +40,7 @@ async function Account() {
           )}
         </div>
       </Card>
+      <SoundToggle />
       <form action={signOut}>
         <button
           type="submit"
